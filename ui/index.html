@@ -107,10 +107,44 @@ function flash(text, kind = "danger") {
 	m.hidden = false;
 }
 
+// The same page serves Settings → Tailscale (ui/settings.html opens it with #settings): there it
+// shows only the connection settings, which are kept off the module's own page.
+const SETTINGS = location.hash === "#settings";
+const settingsLink = (label) => h("a", { href: "/settings/m/tailscale", target: "_top" }, label);
+if (SETTINGS) document.querySelector("header").remove();
+
+function settingsForm(n) {
+	const f = h("form", { class: "grid", async onsubmit(e) {
+		e.preventDefault();
+		try {
+			await api("/node/settings", { method: "PUT", body: JSON.stringify({
+				serve_target: f.serve_target.value.trim() || null, serve_port: Number(f.serve_port.value),
+				socket_path: f.socket_path.value.trim(), serve_http: f.serve_http.checked }) });
+			flash("Saved.", "ok"); await show();
+		} catch (err) { flash(err.message); }
+	} },
+		h("label", null, "Ledger address on this server",
+			h("input", { name: "serve_target", value: n.target_is_default ? "" : n.target.replace("https+insecure", "https"), placeholder: n.target }),
+			h("span", { class: "muted small" }, n.detected_targets?.length
+				? `Detected: ${n.detected_targets.join(", ")}. Leave blank to use it.` : "A port (3000) or address (127.0.0.1:3000).")),
+		h("label", null, "HTTPS port", h("select", { name: "serve_port" },
+			[443, 8443, 10000].map((p) => h("option", { value: p, selected: p === n.port }, p)))),
+		h("label", null, "tailscaled socket", h("input", { name: "socket_path", value: n.socket_path })),
+		h("label", { class: "check" }, h("input", { type: "checkbox", name: "serve_http", checked: n.http_wanted }), "Also answer plain http://"),
+		h("div", null, h("button", null, "Save")));
+	return [h("h2", null, "Connection"),
+		h("p", { class: "muted small" }, "How Tailscale Serve reaches Ledger on this server. The defaults suit a standard install; change them only if sharing reports a problem."),
+		f,
+		h("p", { class: "muted small" }, `Ledger runs as ${n.process_user}`, n.version ? ` · Tailscale ${n.version.split("-")[0]}` : "", ".")];
+}
+
 async function render(el) {
 	const n = await api("/node");
 	// Sharing is for the whole server: only admins of the main books manage it.
 	const admin = n.can_manage;
+	if (SETTINGS) {
+		return replace(el, admin ? settingsForm(n) : [h("p", { class: "muted" }, "The connection is set up for the whole server, from the main books by their admins.")]);
+	}
 	const out = [h("h2", null, "Ledger on your tailnet"),
 		!admin && n.role === "admin" && h("p", { class: "muted small" }, "Sharing Ledger on the tailnet affects the whole server, so it's managed from the main books by their admins.")];
 	const act = (label, cls, fn, okMsg) => h("button", { class: cls, async onclick(e) {
@@ -165,7 +199,7 @@ async function render(el) {
 				out.push(h("p", { class: "muted small" }, `Your Tailscale (${(n.version || "").split("-")[0]}) can't redirect, so http:// serves Ledger directly. Update Tailscale to 1.92 or later to redirect to https instead.`));
 			}
 			if (n.funnel) out.push(msg("danger", "Tailscale Funnel is on for this address: Ledger is reachable from the public internet. Turn it off with  tailscale funnel reset  unless that's intended."));
-			if (tc && !tc.ok) out.push(msg("danger", `Tailscale forwards to ${shownTarget}, but Ledger isn't reachable there: ${tc.reason}. Visitors get “502”. Fix the address under Advanced (stop sharing first).`));
+			if (tc && !tc.ok) out.push(msg("danger", `Tailscale forwards to ${shownTarget}, but Ledger isn't reachable there: ${tc.reason}. Visitors get “502”. Fix the address under Settings → Tailscale (stop sharing first).`));
 			if (tc && tc.ok && !tc.ledger) out.push(msg("danger", `${shownTarget} answers (HTTP ${tc.status}) but it isn't Ledger. Fix the address under Advanced (stop sharing first).`));
 			out.push(h("p", { class: "muted small" }, "Only devices on your tailnet (subject to your ACLs) can open it; everyone still signs in to Ledger as usual."),
 				admin && act("Stop sharing", "", async () => {
@@ -176,7 +210,7 @@ async function render(el) {
 			const problems = [
 				n.magic_dns === false && "Turn on MagicDNS in the Tailscale admin console (DNS page).",
 				!n.https_enabled && "Turn on HTTPS Certificates in the Tailscale admin console (DNS page).",
-				n.conflict && `${n.conflict}. Choose another HTTPS port under Advanced.`,
+				n.conflict && `${n.conflict}. Choose another HTTPS port under Settings → Tailscale.`,
 				n.serve_error,
 			].filter(Boolean);
 			const https = `https://${self.dns_name}${n.port === 443 ? "" : ":" + n.port}/`;
@@ -190,28 +224,7 @@ async function render(el) {
 		}
 	}
 
-	if (admin) {
-		const f = h("form", { class: "grid", async onsubmit(e) {
-			e.preventDefault();
-			try {
-				await api("/node/settings", { method: "PUT", body: JSON.stringify({
-					serve_target: f.serve_target.value.trim() || null, serve_port: Number(f.serve_port.value),
-					socket_path: f.socket_path.value.trim(), serve_http: f.serve_http.checked }) });
-				flash("Saved.", "ok"); await show();
-			} catch (err) { flash(err.message); }
-		} },
-			h("label", null, "Ledger address on this server",
-				h("input", { name: "serve_target", value: n.target_is_default ? "" : n.target.replace("https+insecure", "https"), placeholder: n.target }),
-				h("span", { class: "muted small" }, n.detected_targets?.length
-					? `Detected: ${n.detected_targets.join(", ")}. Leave blank to use it.` : "A port (3000) or address (127.0.0.1:3000).")),
-			h("label", null, "HTTPS port", h("select", { name: "serve_port" },
-				[443, 8443, 10000].map((p) => h("option", { value: p, selected: p === n.port }, p)))),
-			h("label", null, "tailscaled socket", h("input", { name: "socket_path", value: n.socket_path })),
-			h("label", { class: "check" }, h("input", { type: "checkbox", name: "serve_http", checked: n.http_wanted }), "Also answer plain http://"),
-			h("div", null, h("button", null, "Save")));
-		out.push(h("details", null, h("summary", { class: "muted" }, "Advanced"), h("div", { style: "margin-top:10px" }, f),
-			h("p", { class: "muted small" }, `Ledger runs as ${n.process_user}`, n.version ? ` · Tailscale ${n.version.split("-")[0]}` : "", ".")));
-	}
+	if (admin) out.push(h("p", { class: "muted small" }, "The address, port and socket Tailscale uses to reach Ledger are under ", settingsLink("Settings → Tailscale"), "."));
 	replace(el, out);
 }
 

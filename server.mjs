@@ -3,7 +3,7 @@
 // the server's own tailscaled over its LocalAPI socket, and warns on the
 // dashboard when that share goes away. It doesn't call the Tailscale API.
 //
-// The Serve options (Access → Advanced) and whether Ledger should be shared
+// The Serve options (Settings → Tailscale) and whether Ledger should be shared
 // live in mod_tailscale.settings of the main books: they describe this
 // machine, not an organization, so only an admin of the main books changes
 // them. The warning goes to every organization's dashboard.
@@ -244,8 +244,8 @@ export default async function register(ctx) {
 		if (!st.CertDomains?.length) throw bad("Turn on HTTPS Certificates in the Tailscale admin console (DNS page), then try again");
 		const shown = target.replace("https+insecure", "https");
 		const check = await httpProbe(target, ctx.id);
-		if (!check.ok) throw bad(`Ledger isn't reachable at ${shown}: ${check.reason}. Set the address Ledger listens on under Advanced`);
-		if (!check.ledger) throw bad(`${shown} answers (HTTP ${check.status}) but it isn't Ledger. Set the address Ledger listens on under Advanced`);
+		if (!check.ok) throw bad(`Ledger isn't reachable at ${shown}: ${check.reason}. Set the address Ledger listens on under Settings → Tailscale`);
+		if (!check.ledger) throw bad(`${shown} answers (HTTP ${check.status}) but it isn't Ledger. Set the address Ledger listens on under Settings → Tailscale`);
 
 		const { body, etag } = await localJson(s, "GET", "/serve-config");
 		let cfg;

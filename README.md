@@ -16,7 +16,7 @@ Requires **Ledger ≥ 0.11.1**. Everything is on the module's page in the sideba
 | | admin of the main books | everyone else |
 |---|---|---|
 | See whether and where Ledger is shared | ✓ | ✓ |
-| Share / stop sharing, log the server in, Advanced | ✓ | |
+| Share / stop sharing, log the server in, connection settings (Settings → Tailscale) | ✓ | |
 
 Sharing is server-wide: with several organizations (separate books), it's
 managed from the main books, and the "not reachable on your tailnet" warning
@@ -45,7 +45,7 @@ https address (Tailscale ≥ 1.92; older versions serve Ledger on plain http ins
 Before sharing, the module checks that the address really answers as Ledger.
 Other Serve entries on the machine are left alone. **Stop sharing** removes only Ledger's.
 
-Under **Advanced**:
+Under **Settings → Tailscale** (0.7.0; before, under Advanced on the module's page):
 
 | | Default | |
 |---|---|---|
@@ -100,6 +100,11 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
    **Update when the server starts** is on (Settings → Updates, Ledger ≥ 0.12.1).
 
 ## Changes
+
+- **0.7.0** — the connection settings (Ledger's address on the server, HTTPS
+  port, tailscaled socket, plain http) moved from "Advanced" on the module's
+  page to **Settings → Tailscale**. The module's page now only shows whether
+  Ledger is shared and the buttons to share it. Saved values are unchanged.
 
 - **0.6.0** — only Ledger's connection to the tailnet. Removed everything that
   used the Tailscale API: the API credentials and options in Settings →

@@ -1,7 +1,7 @@
 {
   "id": "tailscale",
   "name": "Tailscale",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Ledger's connection to your tailnet: shares Ledger at https://<server>.<tailnet>.ts.net with Tailscale Serve.",
   "ledger": ">=0.11.1",
   "server": "server.mjs",
@@ -12,5 +12,6 @@
       "path": "M10 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M3 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M17 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M11 6.8L6 16.2 M13 6.8L18 16.2 M7 18H17"
     }
   },
-  "migrations": "migrations"
+  "migrations": "migrations",
+  "settings": { "page": "settings.html" }
 }
