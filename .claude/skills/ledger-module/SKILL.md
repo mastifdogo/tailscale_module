@@ -124,9 +124,10 @@ connection only, so don't add API features back without asking.
   Ledger or tailscaled needed) and `ui/index.html` (one page, built with an
   `h()` helper; API data only ever goes in as text). Tests: `npm test`
   (`node --test`, covers `lib.mjs`).
-- No manifest `settings`: the Serve options (address, HTTPS port, socket,
+- No manifest settings fields: the Serve options (address, HTTPS port, socket,
   plain http) and `serve_wanted` live in `mod_tailscale.settings` of the main
-  books and are changed on the page's Advanced box.
+  books and are changed under Settings → Tailscale (the manifest's
+  `settings.page`, `ui/settings.html`, which opens `ui/index.html#settings`).
 - It talks to `tailscaled` on the Ledger server; the checker can't exercise
   those routes without one, so test Serve changes against a real tailscaled or
   the stand-ins in `test/` (`withLedger`, `describeServe`). Changing what it

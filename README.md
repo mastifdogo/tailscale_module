@@ -9,7 +9,8 @@ It only talks to Tailscale on the Ledger server itself; it doesn't use the
 Tailscale API, so it needs no API keys and doesn't list your tailnet's devices
 or users.
 
-Requires **Ledger ≥ 0.11.1**. Everything is on the module's page in the sidebar.
+Requires **Ledger ≥ 0.11.1**. Sharing is on the module's page in the sidebar; its
+connection settings are under Settings → Tailscale.
 
 ### Who can do what
 
@@ -33,7 +34,7 @@ sudo tailscale up                                  # join your tailnet
 sudo tailscale set --operator=ledger               # let Ledger's service user manage Serve
 ```
 
-Replace `ledger` with the user Ledger runs as. The **Access** tab shows the exact command.
+Replace `ledger` with the user Ledger runs as. The module's page shows the exact command.
 Without `--operator`, Ledger can show the server's status but can't share it.
 
 In the Tailscale admin console → **DNS**, turn on **MagicDNS** and **HTTPS Certificates**.
@@ -60,7 +61,7 @@ Notes:
   add the tailnet address there.
 - Who can reach it is governed by your tailnet ACLs. Everyone still signs in to Ledger.
 - The module never turns on Funnel (public internet). If Funnel is enabled for
-  Ledger's address by other means, the Access tab warns you.
+  Ledger's address by other means, the module's page warns you.
 - If Ledger runs in a container, mount the host's socket into it
   (`-v /var/run/tailscale:/var/run/tailscale`) and run Ledger as the operator user.
 
@@ -101,6 +102,15 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
 
 ## Changes
 
+- **0.7.1** — fixes. A tailscaled socket setting that pointed at something
+  other than tailscaled could break the module's page and its settings with
+  no way to change it back; it now says so and the setting can be corrected.
+  The link that logs the server in to Tailscale is shown to admins of the
+  main books only, and only if it is a web address. Sharing is refused when
+  the saved Ledger address is no longer one of this server's own. Saving
+  other settings through the API no longer fails when the saved address is an
+  https one. A message on the page still pointed to "Advanced"; unused
+  page code removed.
 - **0.7.0** — the connection settings (Ledger's address on the server, HTTPS
   port, tailscaled socket, plain http) moved from "Advanced" on the module's
   page to **Settings → Tailscale**. The module's page now only shows whether

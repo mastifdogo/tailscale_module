@@ -33,13 +33,6 @@
 	input, select { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 8px; width: 100%; min-width: 0; }
 	input[type=checkbox] { width: auto; }
 	input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-	.wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
-	table { border-collapse: collapse; width: 100%; }
-	th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-	th { font-weight: 600; font-size: 13px; color: var(--muted); background: var(--bg2); white-space: nowrap; }
-	tr:last-child td { border-bottom: 0; }
-	td.num, th.num { text-align: right; white-space: nowrap; }
-	.badge { display: inline-block; font-size: 12px; padding: 0 6px; border-radius: 10px; border: 1px solid currentColor; white-space: nowrap; margin: 1px 2px 1px 0; }
 	.ok { color: var(--ok); } .warn { color: var(--warn); } .danger { color: var(--danger); }
 	.msg { padding: 8px 12px; border-radius: var(--radius); border: 1px solid currentColor; margin-bottom: 12px; }
 	.msg > span { color: var(--text); }
@@ -50,8 +43,7 @@
 	pre { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; overflow-x: auto; font-size: 13px; margin: 6px 0; }
 	.big { font-size: 17px; word-break: break-all; }
 	.steps { padding-left: 20px; } .steps li { margin: 4px 0; }
-	details { margin-top: 18px; }
-	@media (max-width: 560px) { .opt { display: none; } main { padding: 12px; } }
+	@media (max-width: 560px) { main { padding: 12px; } }
 </style>
 </head>
 <body>
@@ -91,13 +83,8 @@ function h(tag, props, ...children) {
 const $ = (s) => document.querySelector(s);
 const replace = (el, ...children) => { el.replaceChildren(); for (const c of children.flat(Infinity)) if (c) el.append(c instanceof Node ? c : String(c)); };
 const ext = (href, text, cls) => h("a", { href, target: "_blank", rel: "noopener", class: cls }, text);
-// Ledger's own pages open in the top window, not in this iframe.
-const ledgerLink = (href, text) => h("a", { href, target: "_top" }, text);
 const msg = (kind, ...children) => h("div", { class: `msg ${kind}` }, h("span", null, ...children));
 const cmd = (text) => h("pre", null, text);
-const badge = (text, cls = "") => h("span", { class: `badge ${cls}` }, text);
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 
 function flash(text, kind = "danger") {
 	const m = $("#msg");
@@ -110,6 +97,7 @@ function flash(text, kind = "danger") {
 // The same page serves Settings → Tailscale (ui/settings.html opens it with #settings): there it
 // shows only the connection settings, which are kept off the module's own page.
 const SETTINGS = location.hash === "#settings";
+// Ledger's own pages open in the top window, not in this iframe.
 const settingsLink = (label) => h("a", { href: "/settings/m/tailscale", target: "_top" }, label);
 if (SETTINGS) document.querySelector("header").remove();
 
@@ -200,7 +188,7 @@ async function render(el) {
 			}
 			if (n.funnel) out.push(msg("danger", "Tailscale Funnel is on for this address: Ledger is reachable from the public internet. Turn it off with  tailscale funnel reset  unless that's intended."));
 			if (tc && !tc.ok) out.push(msg("danger", `Tailscale forwards to ${shownTarget}, but Ledger isn't reachable there: ${tc.reason}. Visitors get “502”. Fix the address under Settings → Tailscale (stop sharing first).`));
-			if (tc && tc.ok && !tc.ledger) out.push(msg("danger", `${shownTarget} answers (HTTP ${tc.status}) but it isn't Ledger. Fix the address under Advanced (stop sharing first).`));
+			if (tc && tc.ok && !tc.ledger) out.push(msg("danger", `${shownTarget} answers (HTTP ${tc.status}) but it isn't Ledger. Fix the address under Settings → Tailscale (stop sharing first).`));
 			out.push(h("p", { class: "muted small" }, "Only devices on your tailnet (subject to your ACLs) can open it; everyone still signs in to Ledger as usual."),
 				admin && act("Stop sharing", "", async () => {
 					if (!confirm("Stop sharing Ledger on the tailnet? Anyone using the tailnet address loses access.")) return;

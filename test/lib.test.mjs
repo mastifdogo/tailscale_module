@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { test } from "node:test";
 import {
-	ServeConflict, describeServe, httpProbe, httpsRedirect, normalizeTarget, procAddr, versionAtLeast, withLedger,
-	withoutLedger,
+	ServeConflict, describeServe, httpProbe, httpsRedirect, loginUrl, normalizeTarget, procAddr, versionAtLeast,
+	withLedger, withoutLedger,
 } from "../lib.mjs";
 
 const DNS = "bookeeping.tail5dab4b.ts.net";
@@ -30,6 +30,42 @@ test("normalizeTarget accepts addresses on this machine only", () => {
 	assert.equal(normalizeTarget("https://localhost:8443", own), "https+insecure://localhost:8443");
 	for (const bad of ["10.9.9.9:80", "example.com:80", "http://127.0.0.1:80/ledger", "ftp://127.0.0.1:21", "127.0.0.1:99999", "file:///etc/passwd"]) {
 		assert.equal(normalizeTarget(bad, own), null, bad);
+	}
+});
+
+test("normalizeTarget refuses other machines however the address is spelled", () => {
+	const own = new Set(["127.0.0.1", "::1", "localhost", "192.0.2.2"]);
+	for (const bad of [
+		"http://127.0.0.1:8080@example.com", "http://127.0.0.1@example.com:8080", "http://user:pw@127.0.0.1:8080",
+		"localhost.:8080", "localhost.example.com:8080", "127.0.0.1.example.com:8080", "[::ffff:10.9.9.9]:8080",
+		"[fe80::1%25eth0]:8080", "http://127.0.0.1:8080?x", "http://127.0.0.1:8080#x", "http://127.0.0.1\\@example.com",
+		"http://example.com\\@127.0.0.1", "127.0.0.1:0", "127.0.0.1:65536", "127.0.0.1:-1", "javascript://127.0.0.1",
+		"https+insecure://example.com:443", "http://https+insecure://127.0.0.1", "", " ", "http://", "http://:8080",
+	]) {
+		assert.equal(normalizeTarget(bad, own), null, bad);
+	}
+	// Other spellings of an own address come out in one form.
+	assert.equal(normalizeTarget("2130706433:8080", own), "http://127.0.0.1:8080");
+	assert.equal(normalizeTarget("0x7f.1:8080", own), "http://127.0.0.1:8080");
+	assert.equal(normalizeTarget("LOCALHOST:8080", own), "http://localhost:8080");
+	assert.equal(normalizeTarget("[0:0:0:0:0:0:0:1]:8080", own), "http://[::1]:8080");
+});
+
+test("normalizeTarget accepts what it returned", () => {
+	const own = new Set(["127.0.0.1", "::1", "localhost"]);
+	for (const input of ["8080", "https://localhost:8443", "https://[::1]:8443", "[::1]:8080", "https://127.0.0.1"]) {
+		const t = normalizeTarget(input, own);
+		assert.ok(t, input);
+		assert.equal(normalizeTarget(t, own), t, input);
+	}
+	assert.equal(normalizeTarget("https+insecure://192.0.2.9:8443", own), null);
+});
+
+test("loginUrl keeps only web addresses", () => {
+	assert.equal(loginUrl("https://login.tailscale.com/a/1a2b3c"), "https://login.tailscale.com/a/1a2b3c");
+	assert.equal(loginUrl("http://headscale.lan:8080/register/x"), "http://headscale.lan:8080/register/x");
+	for (const bad of ["", undefined, null, 5, "javascript:alert(1)", "data:text/html,x", " https://x/", "https://x/ y", "//x/y"]) {
+		assert.equal(loginUrl(bad), null, String(bad));
 	}
 });
 
@@ -100,12 +136,14 @@ test("httpProbe tells Ledger from other web servers", async (t) => {
 		res.end('{"error":{"code":"unauthorized","message":"log in"}}');
 	});
 	const other = await listen((req, res) => res.end("<h1>nginx</h1>"));
+	const nullError = await listen((req, res) => res.end('{"error":null}'));
 	const closed = await listen(() => {});
 	const closedPort = closed.address().port;
 	closed.close();
-	t.after(() => { ledger.close(); other.close(); });
+	t.after(() => { ledger.close(); other.close(); nullError.close(); });
 
 	assert.deepEqual(await httpProbe(`http://127.0.0.1:${ledger.address().port}`, "tailscale"), { ok: true, status: 401, ledger: true });
 	assert.deepEqual(await httpProbe(`http://127.0.0.1:${other.address().port}`, "tailscale"), { ok: true, status: 200, ledger: false });
+	assert.deepEqual(await httpProbe(`http://127.0.0.1:${nullError.address().port}`, "tailscale"), { ok: true, status: 200, ledger: false });
 	assert.deepEqual(await httpProbe(`http://127.0.0.1:${closedPort}`, "tailscale"), { ok: false, reason: "nothing is listening there" });
 });

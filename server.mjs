@@ -11,8 +11,8 @@
 import http from "node:http";
 import os from "node:os";
 import {
-	REDIRECT_SINCE, SERVE_PORTS, ServeConflict, describeServe, hostFor, httpProbe, normalizeTarget, ownListeners,
-	serveUrl, versionAtLeast, withLedger, withoutLedger,
+	REDIRECT_SINCE, SERVE_PORTS, ServeConflict, describeServe, hostFor, httpProbe, loginUrl, normalizeTarget,
+	ownListeners, serveUrl, versionAtLeast, withLedger, withoutLedger,
 } from "./lib.mjs";
 
 const SOCKET_RE = /^\/[A-Za-z0-9._/-]{1,200}$/;
@@ -175,10 +175,23 @@ export default async function register(ctx) {
 			} catch {}
 			throw new ctx.HttpError(502, `tailscaled ${path.split("?")[0]}: ${String(msg).slice(0, 200) || `HTTP ${r.status}`}`);
 		}
-		return { body: r.text.trim() && r.text.trim() !== "null" ? JSON.parse(r.text) : null, etag: r.headers.etag };
+		let json = null;
+		try {
+			if (r.text.trim()) json = JSON.parse(r.text);
+		} catch {
+			throw notTailscaled(s);
+		}
+		return { body: json, etag: r.headers.etag };
 	}
+	// Something answers on the socket, but not the way tailscaled does.
+	const notTailscaled = (s) => new ctx.HttpError(502,
+		`What answers at ${s.socket_path} isn't tailscaled. Check the tailscaled socket under Settings → Tailscale`);
 
-	const nodeStatus = async (s) => (await localJson(s, "GET", "/status?peers=false")).body;
+	async function nodeStatus(s) {
+		const st = (await localJson(s, "GET", "/status?peers=false")).body;
+		if (!st || typeof st !== "object" || Array.isArray(st)) throw notTailscaled(s);
+		return st;
+	}
 	const selfDns = (st) => String(st?.Self?.DNSName ?? "").replace(/\.$/, "");
 
 	async function nodeInfo(s) {
@@ -198,7 +211,7 @@ export default async function register(ctx) {
 		const info = {
 			...base, reachable: true,
 			backend_state: st.BackendState ?? null,
-			auth_url: st.AuthURL || null,
+			auth_url: loginUrl(st.AuthURL),
 			version: st.Version ?? null,
 			tailnet: st.CurrentTailnet?.Name ?? null,
 			magic_dns: st.CurrentTailnet?.MagicDNSEnabled ?? null,
@@ -237,6 +250,12 @@ export default async function register(ctx) {
 	// Write Ledger's Serve entries: https on serve_port, and http on port 80 if wanted.
 	async function applyServe(s, username) {
 		const target = targetOf(s);
+		// A saved address can stop being this server's (its network changed, or the
+		// settings came from another server's backup): never share another machine.
+		if (s.serve_target && !normalizeTarget(s.serve_target)) {
+			throw bad(`${target.replace("https+insecure", "https")} is no longer an address on this server. ` +
+				"Set the address Ledger listens on under Settings → Tailscale");
+		}
 		const st = await nodeStatus(s);
 		if (st.BackendState !== "Running") throw bad(`Tailscale on the Ledger server is not connected (${st.BackendState}). Log it in first`);
 		const dns = selfDns(st);
@@ -261,9 +280,13 @@ export default async function register(ctx) {
 		await eachOrg("tailnet access check", () => clearOrNotifyServe(null));
 	}
 
-	ctx.route("GET", "/node", async (req) => ({
-		...(await nodeInfo(await getSettings())), role: req.user.role, can_manage: await canManageServe(req),
-	}));
+	ctx.route("GET", "/node", async (req) => {
+		const info = await nodeInfo(await getSettings());
+		const can_manage = await canManageServe(req);
+		// Whoever opens the login link decides which tailnet the server joins.
+		if (!can_manage && info.auth_url) info.auth_url = null;
+		return { ...info, role: req.user.role, can_manage };
+	});
 
 	ctx.route("PUT", "/node/settings", async (req) => {
 		await requireServeAdmin(req, "change how Ledger is shared on the tailnet");
@@ -272,7 +295,7 @@ export default async function register(ctx) {
 		const socket_path = b.socket_path === undefined ? cur.socket_path : b.socket_path;
 		if (typeof socket_path !== "string" || !SOCKET_RE.test(socket_path)) throw bad("Socket path must be an absolute path");
 		let serve_target = b.serve_target === undefined ? cur.serve_target : b.serve_target || null;
-		if (serve_target !== null) {
+		if (b.serve_target !== undefined && serve_target !== null) {
 			const t = typeof serve_target === "string" && serve_target.length <= 100 ? normalizeTarget(serve_target) : null;
 			if (!t) {
 				throw bad(`"${String(serve_target).slice(0, 100)}" isn't an address on this server. ` +
@@ -324,7 +347,8 @@ export default async function register(ctx) {
 		await localJson(s, "POST", "/login-interactive");
 		for (let i = 0; i < 20; i++) {
 			const st = await nodeStatus(s);
-			if (st.AuthURL || st.BackendState === "Running") return { auth_url: st.AuthURL || null, backend_state: st.BackendState };
+			const auth_url = loginUrl(st.AuthURL);
+			if (auth_url || st.BackendState === "Running") return { auth_url, backend_state: st.BackendState };
 			await new Promise((r) => setTimeout(r, 500));
 		}
 		throw new ctx.HttpError(504, "tailscaled did not produce a login link; run  sudo tailscale up  on the server instead");

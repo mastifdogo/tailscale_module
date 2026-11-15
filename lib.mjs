@@ -77,9 +77,10 @@ export function ownAddresses() {
 }
 
 // Accepts "3000", "127.0.0.1:3000", "http://10.0.0.5:3000/", "https://localhost:8443", ...
+// and what it returns itself ("https+insecure://localhost:8443").
 // Returns a Tailscale Serve proxy target, or null if it isn't an address on this machine.
 export function normalizeTarget(input, own = ownAddresses()) {
-	let v = String(input).trim();
+	let v = String(input).trim().replace(/^https\+insecure:\/\//i, "https://");
 	if (/^\d{1,5}$/.test(v)) v = `127.0.0.1:${v}`;
 	if (!/^[a-z]+:\/\//i.test(v)) v = `http://${v}`;
 	let u;
@@ -118,7 +119,8 @@ export function httpProbe(target, moduleId) {
 			res.on("end", () => {
 				let ledger = false;
 				try {
-					ledger = typeof JSON.parse(body)?.error === "object";
+					const error = JSON.parse(body)?.error;
+					ledger = !!error && typeof error === "object";
 				} catch {}
 				resolve({ ok: true, status: res.statusCode, ledger });
 			});
@@ -134,6 +136,9 @@ export function httpProbe(target, moduleId) {
 		req.end();
 	});
 }
+
+// tailscaled's login link, only if it is one: it becomes a link in the page.
+export const loginUrl = (v) => (typeof v === "string" && /^https?:\/\/\S+$/i.test(v) ? v : null);
 
 // ------------------------------------------------------------------ Tailscale Serve config
 
