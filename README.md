@@ -16,8 +16,8 @@ connection settings are under Settings → Tailscale.
 
 | | admin of the main books | everyone else |
 |---|---|---|
-| See whether Ledger is connected and shared | ✓ | ✓ |
-| See where (the address, this server's name, tailnet and IPs, the socket and service user) | ✓ | |
+| See whether Ledger is connected and shared, and at which address | ✓ | ✓ |
+| See the rest (this server's name, tailnet and IPs, the socket and service user) | ✓ | |
 | Share / stop sharing, log the server in, connection settings (Settings → Tailscale) | ✓ | |
 
 Sharing is server-wide: with several organizations (separate books), it's
@@ -72,7 +72,7 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
 
 | | |
 |---|---|
-| `GET /node` | for admins of the main books: this server's Tailscale state and whether and where Ledger is shared; for everyone else only `{connected, serving}`; plus your role and `can_manage` |
+| `GET /node` | for admins of the main books: this server's Tailscale state and whether and where Ledger is shared; for everyone else only `{connected, serving, url}`; plus your role and `can_manage` |
 | `POST /node/serve`, `DELETE /node/serve` | share / stop sharing Ledger on the tailnet |
 | `PUT /node/settings` | `{serve_target?, serve_port?, socket_path?, serve_http?}` |
 | `POST /node/login` | start an interactive login; returns `{auth_url}` |
@@ -108,7 +108,7 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
   addresses Ledger listens on, the tailnet's name, this server's IPs and the
   Serve entries; those now go only to admins of the main books (who manage
   the connection), and everyone else is told whether Ledger is connected and
-  shared. A failure while reading the list of organizations at startup could
+  shared, and at which address. A failure while reading the list of organizations at startup could
   stop the Ledger server (an unhandled rejection in a timer); it is logged.
 - **0.7.1** — fixes. A tailscaled socket setting that pointed at something
   other than tailscaled could break the module's page and its settings with

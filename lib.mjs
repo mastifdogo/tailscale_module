@@ -208,12 +208,14 @@ export function withLedger(cfg, { dns, port, target, http: wantHttp, version }) 
 
 /**
  * What someone who can't manage the connection is told about this server: whether it is on a
- * tailnet and whether Ledger is shared there. Nothing that describes the machine (socket, service
- * user, addresses, tailnet name, IPs, Serve entries, error texts).
+ * tailnet, whether Ledger is shared there and at which address. Nothing else that describes the
+ * machine (socket, service user, listening addresses, IPs, Serve entries, error texts).
  */
 export const publicNodeInfo = (info) => ({
 	connected: info?.reachable === true && info.backend_state === "Running",
 	serving: info?.serving === true,
+	// The address people open Ledger at on the tailnet: everyone who uses Ledger may know where it is.
+	url: info?.serving === true && typeof info.url === "string" ? info.url : null,
 });
 
 /** What cfg says about Ledger at dns: served where, and what's in the way. */

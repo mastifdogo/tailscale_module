@@ -148,7 +148,7 @@ test("httpProbe tells Ledger from other web servers", async (t) => {
 	assert.deepEqual(await httpProbe(`http://127.0.0.1:${closedPort}`, "tailscale"), { ok: false, reason: "nothing is listening there" });
 });
 
-test("publicNodeInfo tells non-managers only connected and shared", () => {
+test("publicNodeInfo tells non-managers only connected, shared and the address", () => {
 	// What GET /node works out for someone who manages the connection.
 	const full = {
 		socket_path: "/var/run/tailscale/tailscaled.sock", process_user: "ledger", target: TARGET, target_is_default: true,
@@ -159,11 +159,11 @@ test("publicNodeInfo tells non-managers only connected and shared", () => {
 		serving: true, url: `https://${DNS}/`, conflict: null, funnel: false, http_url: null, http_mode: null,
 		http_conflict: null, http_redirect_supported: true, target_check: { ok: true, ledger: true, status: 200 },
 	};
-	assert.deepEqual(publicNodeInfo(full), { connected: true, serving: true });
-	assert.deepEqual(publicNodeInfo({ ...full, serving: false, url: null, conflict: "port taken" }), { connected: true, serving: false });
-	assert.deepEqual(publicNodeInfo({ ...full, backend_state: "NeedsLogin", serving: false }), { connected: false, serving: false });
+	assert.deepEqual(publicNodeInfo(full), { connected: true, serving: true, url: `https://${DNS}/` });
+	assert.deepEqual(publicNodeInfo({ ...full, serving: false, url: null, conflict: "port taken" }), { connected: true, serving: false, url: null });
+	assert.deepEqual(publicNodeInfo({ ...full, backend_state: "NeedsLogin", serving: false }), { connected: false, serving: false, url: null });
 	// tailscaled can't be reached: the error names the socket and the service user, and stays out.
 	const down = { socket_path: full.socket_path, process_user: "ledger", reachable: false, not_ready: false, error: "no tailscaled at /var/run/tailscale/tailscaled.sock" };
-	assert.deepEqual(publicNodeInfo(down), { connected: false, serving: false });
-	assert.deepEqual(publicNodeInfo(undefined), { connected: false, serving: false });
+	assert.deepEqual(publicNodeInfo(down), { connected: false, serving: false, url: null });
+	assert.deepEqual(publicNodeInfo(undefined), { connected: false, serving: false, url: null });
 });

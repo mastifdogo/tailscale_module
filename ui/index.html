@@ -144,7 +144,7 @@ async function render(el) {
 
 	if (!admin) {
 		// Everyone else is told only whether Ledger is connected and shared, nothing about the server.
-		out.push(n.serving ? msg("ok", "Ledger is shared with your tailnet.")
+		out.push(n.serving ? (n.url ? msg("ok", "Ledger is shared with your tailnet at", h("br"), ext(n.url, n.url, "big")) : msg("ok", "Ledger is shared with your tailnet."))
 			: n.connected ? h("p", null, "The Ledger server is on a tailnet, but Ledger isn't shared on it.")
 			: h("p", null, "The Ledger server isn't connected to a tailnet."),
 			h("p", { class: "muted" }, n.serving ? "Admins of the main books manage this connection." : "An admin of the main books can set it up from here."),
