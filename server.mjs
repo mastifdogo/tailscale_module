@@ -12,7 +12,7 @@ import http from "node:http";
 import os from "node:os";
 import {
 	REDIRECT_SINCE, SERVE_PORTS, ServeConflict, describeServe, hostFor, httpProbe, loginUrl, normalizeTarget,
-	ownListeners, serveUrl, versionAtLeast, withLedger, withoutLedger,
+	ownListeners, publicNodeInfo, serveUrl, versionAtLeast, withLedger, withoutLedger,
 } from "./lib.mjs";
 
 const SOCKET_RE = /^\/[A-Za-z0-9._/-]{1,200}$/;
@@ -282,10 +282,11 @@ export default async function register(ctx) {
 
 	ctx.route("GET", "/node", async (req) => {
 		const info = await nodeInfo(await getSettings());
-		const can_manage = await canManageServe(req);
-		// Whoever opens the login link decides which tailnet the server joins.
-		if (!can_manage && info.auth_url) info.auth_url = null;
-		return { ...info, role: req.user.role, can_manage };
+		// The socket, service user, listening addresses, tailnet, IPs, Serve entries and the login link
+		// (whoever opens it decides which tailnet the server joins) describe the machine: only those
+		// who manage the connection get them. Everyone else learns whether Ledger is connected and shared.
+		if (!(await canManageServe(req))) return { ...publicNodeInfo(info), role: req.user.role, can_manage: false };
+		return { ...info, role: req.user.role, can_manage: true };
 	});
 
 	ctx.route("PUT", "/node/settings", async (req) => {
@@ -361,9 +362,14 @@ export default async function register(ctx) {
 		if ((await getSettings()).serve_wanted) await checkServe();
 	}
 	function runTick() {
-		tick().catch((e) => ctx.log.error("tailscale background check failed", { error: e.message }));
+		tick().catch((e) => ctx.log.error("tailscale background check failed", { error: String(e?.message ?? e) }));
 	}
-	setTimeout(() => eachOrg("removing old Tailscale API data", forgetApiFeatures), 3_000).unref();
+	// Nothing awaits a timer: a rejection here (the list of organizations can't be read) would be an
+	// unhandled one, which stops the whole Ledger server.
+	setTimeout(() => {
+		eachOrg("removing old Tailscale API data", forgetApiFeatures)
+			.catch((e) => ctx.log.error("tailscale: removing old Tailscale API data failed", { error: String(e?.message ?? e) }));
+	}, 3_000).unref();
 	setTimeout(runTick, 5_000).unref();
 	setInterval(runTick, 60_000).unref();
 }

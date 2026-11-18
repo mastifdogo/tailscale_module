@@ -16,7 +16,8 @@ connection settings are under Settings → Tailscale.
 
 | | admin of the main books | everyone else |
 |---|---|---|
-| See whether and where Ledger is shared | ✓ | ✓ |
+| See whether Ledger is connected and shared | ✓ | ✓ |
+| See where (the address, this server's name, tailnet and IPs, the socket and service user) | ✓ | |
 | Share / stop sharing, log the server in, connection settings (Settings → Tailscale) | ✓ | |
 
 Sharing is server-wide: with several organizations (separate books), it's
@@ -71,7 +72,7 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
 
 | | |
 |---|---|
-| `GET /node` | this server's Tailscale state, whether Ledger is shared, your role and whether you can change it |
+| `GET /node` | for admins of the main books: this server's Tailscale state and whether and where Ledger is shared; for everyone else only `{connected, serving}`; plus your role and `can_manage` |
 | `POST /node/serve`, `DELETE /node/serve` | share / stop sharing Ledger on the tailnet |
 | `PUT /node/settings` | `{serve_target?, serve_port?, socket_path?, serve_http?}` |
 | `POST /node/login` | start an interactive login; returns `{auth_url}` |
@@ -102,6 +103,13 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
 
 ## Changes
 
+- **0.7.2** — fixes. `GET /node` gave every signed-in user, viewers of any
+  organization included, the tailscaled socket path, the service user, the
+  addresses Ledger listens on, the tailnet's name, this server's IPs and the
+  Serve entries; those now go only to admins of the main books (who manage
+  the connection), and everyone else is told whether Ledger is connected and
+  shared. A failure while reading the list of organizations at startup could
+  stop the Ledger server (an unhandled rejection in a timer); it is logged.
 - **0.7.1** — fixes. A tailscaled socket setting that pointed at something
   other than tailscaled could break the module's page and its settings with
   no way to change it back; it now says so and the setting can be corrected.

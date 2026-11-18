@@ -1,7 +1,7 @@
 {
   "id": "tailscale",
   "name": "Tailscale",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Ledger's connection to your tailnet: shares Ledger at https://<server>.<tailnet>.ts.net with Tailscale Serve.",
   "ledger": ">=0.11.1",
   "server": "server.mjs",

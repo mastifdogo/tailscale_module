@@ -142,6 +142,16 @@ async function render(el) {
 	} }, label);
 	const recheck = act("Check again", "", async () => flash(""));
 
+	if (!admin) {
+		// Everyone else is told only whether Ledger is connected and shared, nothing about the server.
+		out.push(n.serving ? msg("ok", "Ledger is shared with your tailnet.")
+			: n.connected ? h("p", null, "The Ledger server is on a tailnet, but Ledger isn't shared on it.")
+			: h("p", null, "The Ledger server isn't connected to a tailnet."),
+			h("p", { class: "muted" }, n.serving ? "Admins of the main books manage this connection." : "An admin of the main books can set it up from here."),
+			recheck);
+		return replace(el, out);
+	}
+
 	if (!n.reachable && n.not_ready) {
 		out.push(msg("warn", "Tailscale is installed and running on the Ledger server, but its service hasn't started properly."),
 			h("ol", { class: "steps" },

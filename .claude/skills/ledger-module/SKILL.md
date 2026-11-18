@@ -163,8 +163,10 @@ connection only, so don't add API features back without asking.
   Serve defaults.
 - Roles and organizations: the Serve options describe the machine, so they're
   read and written in the main books (`inMain`) and changed only by admins of
-  the main books (`requireServeAdmin`); `GET /node` reports `can_manage`. The
-  share warning goes to every organization (`eachOrg`).
+  the main books (`requireServeAdmin`); `GET /node` reports `can_manage` and gives the
+  machine's details (socket, service user, addresses, tailnet, IPs, Serve
+  entries) only to them; everyone else gets `publicNodeInfo` (connected,
+  serving). The share warning goes to every organization (`eachOrg`).
 - 0.6.0 cleanup (`forgetApiFeatures`, once per organization): clears the old
   API settings from Ledger's settings store and the old dashboard items;
   migration 006 dropped the device, user and sync tables and old settings
