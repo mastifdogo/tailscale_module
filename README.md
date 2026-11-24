@@ -103,6 +103,7 @@ All under `/api/v1/m/tailscale`, logged-in users only; changes are for admins of
 
 ## Changes
 
+- **0.7.3** — no "Tailscale" heading on the page: Ledger's window already names it.
 - **0.7.2** — fixes. `GET /node` gave every signed-in user, viewers of any
   organization included, the tailscaled socket path, the service user, the
   addresses Ledger listens on, the tailnet's name, this server's IPs and the

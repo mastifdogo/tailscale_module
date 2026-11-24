@@ -48,7 +48,6 @@
 </head>
 <body>
 <main>
-	<header><h1>Tailscale</h1></header>
 	<div id="msg" hidden></div>
 	<section id="view"></section>
 </main>
@@ -99,7 +98,6 @@ function flash(text, kind = "danger") {
 const SETTINGS = location.hash === "#settings";
 // Ledger's own pages open in the top window, not in this iframe.
 const settingsLink = (label) => h("a", { href: "/settings/m/tailscale", target: "_top" }, label);
-if (SETTINGS) document.querySelector("header").remove();
 
 function settingsForm(n) {
 	const f = h("form", { class: "grid", async onsubmit(e) {
